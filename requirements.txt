@@ -5,5 +5,5 @@ requests
 aiohttp
 python-dotenv
 
-# Install quotexpy directly from GitHub
-git+https://github.com/monosans/quotexpy.git
+# FIXED quotexpy:
+https://github.com/monosans/quotexpy/archive/refs/heads/master.zip
