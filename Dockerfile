@@ -1,18 +1,18 @@
-# Use Python 3.10 Slim Image
+# ✅ Use Python 3.10 (not 3.9)
 FROM python:3.10-slim
 
-# Set working directory
-WORKDIR /app
-
-# Copy project files
-COPY . /app
-
-# Install git and other essential tools
+# 🛠️ Install git (IMPORTANT)
 RUN apt-get update && apt-get install -y git
 
-# Upgrade pip and install requirements
+# 📁 Set working directory
+WORKDIR /app
+
+# 📂 Copy all project files to /app
+COPY . /app
+
+# 🧪 Upgrade pip + install requirements
 RUN pip install --no-cache-dir --upgrade pip
 RUN if [ -f "requirements.txt" ]; then pip install --no-cache-dir -r requirements.txt; fi
 
-# Run the bot
+# ▶️ Run the bot
 CMD ["python", "bot.py"]
