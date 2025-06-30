@@ -3,5 +3,7 @@ pandas
 ta
 requests
 aiohttp
-quotexpy
 python-dotenv
+
+# Install quotexpy directly from GitHub
+git+https://github.com/monosans/quotexpy.git
