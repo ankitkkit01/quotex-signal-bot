@@ -5,5 +5,5 @@ requests
 aiohttp
 python-dotenv
 
-# FIXED quotexpy:
-https://github.com/monosans/quotexpy/archive/refs/heads/master.zip
+# ✅ Working quotexpy ZIP link
+https://github.com/monosans/quotexpy/archive/refs/heads/main.zip
