@@ -7,7 +7,7 @@ all_pairs = [
 
     # Minor & Exotic Currencies
     "USD/IDR", "USD/MXN", "USD/BRL", "USD/ZAR", "USD/TRY", "USD/COP", "AUD/NZD",
-    "AUD/CHF", "NZD/CHF", "NZD/CAD", "GBP/AUD", "EUR/CHF",
+    "AUD/CHF", "NZD/CHF", "NZD/CAD", "GBP/AUD", "EUR/CHF", "USD/ARS",
 
     # Cryptocurrencies
     "BTC/USD", "ETH/USD", "XRP", "LTC", "DOGE", "SOL", "SHIBA", "TRUMP", "TON",
