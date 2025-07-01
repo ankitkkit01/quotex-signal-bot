@@ -1,30 +1,29 @@
 import os
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 )
 from dotenv import load_dotenv
 from signal_generator import generate_signal
-from quotex_api_handler import QuotexAPIHandler
 from utils.pairs import all_pairs
+from quotexpy.new import Quotex
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-QUOTEX_EMAIL = os.getenv("QUOTEX_EMAIL")
-QUOTEX_PASSWORD = os.getenv("QUOTEX_PASSWORD")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-quotex = QuotexAPIHandler()
+# Initialize Quotex
+quotex = Quotex()
 user_selected_pairs = {}
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🧠 Signal Generator", callback_data="signal_generator")]]
-    await update.message.reply_text("Welcome to Quotex Signal Bot 🚀", reply_markup=InlineKeyboardMarkup(keyboard))
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Welcome to Quotex Signal Bot 🚀", reply_markup=reply_markup)
 
-# Handle signal flow
+# Handle buttons
 async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -39,7 +38,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 row = []
         if row:
             keyboard.append(row)
-        await query.edit_message_text("📊 Select a trading pair:", reply_markup=InlineKeyboardMarkup(keyboard))
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text("📊 Select a trading pair:", reply_markup=reply_markup)
 
     elif query.data.startswith("pair_"):
         pair = query.data.replace("pair_", "")
@@ -66,6 +67,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ━━━━━━━━━━━━━━━━━━━━━━━
 Do you want to place this trade?
 """
+
         confirm_buttons = [
             [
                 InlineKeyboardButton("✅ YES", callback_data="confirm_trade"),
@@ -84,19 +86,14 @@ Do you want to place this trade?
 
         await query.edit_message_text(f"📤 Placing trade for {pair}...")
 
-        if not quotex.connected:
-            await quotex.connect(QUOTEX_EMAIL, QUOTEX_PASSWORD)
-            await quotex.change_account("PRACTICE")
-
-        trade_id = await quotex.place_trade(pair, "call", 10, 60)
+        trade_id = quotex.place_trade(pair, "call", 10, 60)
 
         if not trade_id:
             await query.edit_message_text("❌ Trade failed. Please try again.")
             return
 
-        import asyncio
-        await asyncio.sleep(60)
-        is_win, result = await quotex.check_result(pair, trade_id)
+        await asyncio.sleep(5)
+        is_win, result = quotex.check_result(pair, trade_id)
 
         if is_win:
             await query.edit_message_text(f"✅ TRADE RESULT:\n{pair} - CALL\n💰 Profit: +${result:.2f} (WIN) 🎉")
@@ -106,13 +103,9 @@ Do you want to place this trade?
     elif query.data == "cancel_trade":
         await query.edit_message_text("❌ Trade cancelled by user.")
 
-# ▶️ Launch Bot in Webhook Mode
+# App runner
 if __name__ == "__main__":
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_button))
-
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.getenv("PORT", default=10000)),
-        webhook_url=WEBHOOK_URL
-    )
+    app.run_polling()
