@@ -1,73 +1,56 @@
-# signal_generator.py
-
-import random
-import requests
 import pandas as pd
-import numpy as np
-from ta.momentum import RSIIndicator
-from ta.trend import SMAIndicator
+import ta
+from quotexpy.new import Quotex
 
-async def generate_signal(pair):
-    try:
-        # Convert Quotex format (EUR/USD -> EURUSD)
-        symbol = pair.replace("/", "")
+# 👇 Initialize Quotex (replace credentials if needed)
+quotex = Quotex(email="ak19860570@gmail.com", password="12345678an")
 
-        # Get 1-minute candle data (last 100)
-        url = f"https://api.binance.com/api/v3/klines?symbol={symbol.upper()}USDT&interval=1m&limit=100"
-        response = requests.get(url)
-        data = response.json()
-
-        if not data or "code" in data:
-            return None
-
-        df = pd.DataFrame(data, columns=[
-            'timestamp', 'open', 'high', 'low', 'close', 'volume',
-            'close_time', 'quote_asset_volume', 'trades',
-            'taker_buy_base', 'taker_buy_quote', 'ignore'
-        ])
-        df['close'] = df['close'].astype(float)
-        df['high'] = df['high'].astype(float)
-        df['low'] = df['low'].astype(float)
-        df['volume'] = df['volume'].astype(float)
-
-        # Indicators
-        rsi = RSIIndicator(df['close'], window=14).rsi()
-        sma = SMAIndicator(df['close'], window=100).sma_indicator()
-
-        # Support & Resistance zones (last 20 candles)
-        recent_highs = df['high'].iloc[-20:]
-        recent_lows = df['low'].iloc[-20:]
-        resistance = recent_highs.max()
-        support = recent_lows.min()
-        last_price = df['close'].iloc[-1]
-
-        zone = "Middle"
-        if abs(last_price - resistance) < 0.02:
-            zone = "Resistance"
-        elif abs(last_price - support) < 0.02:
-            zone = "Support"
-
-        # Volume Spike
-        recent_volume = df['volume'].iloc[-20:]
-        vol_spike = df['volume'].iloc[-1] > recent_volume.mean()
-
-        # Direction logic
-        direction = "call" if rsi.iloc[-1] < 30 and last_price > sma.iloc[-1] else "put" if rsi.iloc[-1] > 70 and last_price < sma.iloc[-1] else None
-        if not direction:
-            return None
-
-        # Confidence
-        confidence = "HIGH" if vol_spike and zone in ["Support", "Resistance"] else "MEDIUM"
-
-        return {
-            "direction": direction,
-            "rsi": round(rsi.iloc[-1], 2),
-            "trend": "UP" if last_price > sma.iloc[-1] else "DOWN",
-            "volume": "High" if vol_spike else "Normal",
-            "zone": zone,
-            "confidence": confidence
-        }
-
-    except Exception as e:
-        print(f"Error generating signal: {e}")
+# 🕒 Fetch latest candles from Quotex
+async def fetch_candles(pair: str, timeframe: str = "1m", limit: int = 50):
+    success, data = await quotex.get_candles(pair, timeframe, limit)
+    if not success or not data:
         return None
+
+    df = pd.DataFrame(data)
+    if df.empty or 'close' not in df.columns:
+        return None
+    return df
+
+# 🧠 Signal Generator Logic (RSI + SMA100 based)
+async def generate_signal(pair: str):
+    df = await fetch_candles(pair)
+    if df is None or len(df) < 20:
+        print(f"[DEBUG] Not enough data for {pair}")
+        return None
+
+    # 📈 Indicators
+    df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=14).rsi()
+    df['sma100'] = df['close'].rolling(window=100).mean()
+
+    latest = df.iloc[-1]
+    rsi = latest['rsi']
+    price = latest['close']
+    sma100 = latest['sma100']
+    trend = "bullish" if price > sma100 else "bearish"
+
+    if pd.isna(rsi) or pd.isna(sma100):
+        return None
+
+    # 🎯 Strategy: RSI oversold/overbought with SMA filter
+    if rsi < 30 and price > sma100:
+        direction = "call"
+        confidence = "High"
+    elif rsi > 70 and price < sma100:
+        direction = "put"
+        confidence = "High"
+    else:
+        return None  # No valid signal
+
+    return {
+        "direction": direction,
+        "rsi": round(rsi, 2),
+        "trend": trend,
+        "volume": "N/A",
+        "zone": "Support" if direction == "call" else "Resistance",
+        "confidence": confidence
+    }
