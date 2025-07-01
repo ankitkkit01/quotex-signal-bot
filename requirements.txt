@@ -1,9 +1,0 @@
-python-telegram-bot==20.6
-pandas
-ta
-requests
-aiohttp
-python-dotenv
-
-# ✅ Working quotexpy ZIP link
-https://github.com/monosans/quotexpy/archive/refs/heads/main.zip
