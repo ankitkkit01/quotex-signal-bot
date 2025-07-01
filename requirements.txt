@@ -4,4 +4,4 @@ ta
 requests
 aiohttp
 python-telegram-bot[webhooks]==20.6
-git+https://github.com/monosans/quotexpy.git
+https://github.com/monosans/quotexpy/archive/refs/heads/master.zip
