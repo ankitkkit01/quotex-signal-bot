@@ -1,6 +1,7 @@
-python-telegram-bot==20.6
+python-dotenv
 pandas
 ta
 requests
 aiohttp
-python-dotenv
+python-telegram-bot[webhooks]==20.6
+git+https://github.com/monosans/quotexpy.git
