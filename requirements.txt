@@ -1,8 +1,7 @@
-python-dotenv
+python-telegram-bot==20.6
 pandas
 ta
 requests
 aiohttp
-websockets
-python-telegram-bot[webhooks]==20.6
+python-dotenv
 -e ./quotexpy
