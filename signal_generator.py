@@ -1,30 +1,37 @@
 # signal_generator.py
 
 import random
-from quotexpy.new import Quotex
 import pandas as pd
 import ta
+from quotexpy.new import Quotex
 
-# Login to Quotex
-quotex = Quotex()
-quotex.login(email="arhimanshya@gmail.com", password="12345678an")
+# Initialize Quotex with login credentials
+quotex = Quotex(email="arhimanshya@gmail.com", password="12345678an")
 
-# Fetch and analyze candle data
+# Fetch and analyze market data
 def analyze_market(pair):
     try:
         candles = quotex.get_candles(asset=pair, interval=15, count=100)
         if not candles:
             return None
 
+        # Convert and clean dataframe
         df = pd.DataFrame(candles)
-        df.rename(columns={"open_price": "open", "close_price": "close", "max_price": "high", "min_price": "low"}, inplace=True)
+        df.rename(columns={
+            "open_price": "open",
+            "close_price": "close",
+            "max_price": "high",
+            "min_price": "low"
+        }, inplace=True)
+
+        # Add indicators
         df["rsi"] = ta.momentum.RSIIndicator(close=df["close"], window=14).rsi()
         df["ema"] = ta.trend.EMAIndicator(close=df["close"], window=20).ema_indicator()
         df["volume"] = ta.volume.OnBalanceVolumeIndicator(close=df["close"], volume=df["volume"]).on_balance_volume()
 
         latest = df.iloc[-1]
 
-        # Signal logic
+        # Decision Logic
         direction = None
         confidence = 0
 
@@ -50,10 +57,10 @@ def analyze_market(pair):
         print(f"[Signal Error] {e}")
         return None
 
-# Main callable function
+# Callable async function for Telegram bot
 async def generate_signal(pair):
-    print(f"[Generating Signal] {pair}")
-    signal = analyze_market(pair)
-    if signal and signal["direction"]:
-        return signal
+    print(f"[Generating Signal] for {pair}")
+    result = analyze_market(pair)
+    if result and result["direction"]:
+        return result
     return None
