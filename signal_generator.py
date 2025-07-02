@@ -1,80 +1,49 @@
 from quotexpy.new import Quotex
-import pandas as pd
-import numpy as np
-import ta
 
-# ✅ Initialize Quotex instance (already logged-in in main bot)
+# Dummy function — aapke actual analysis functions se replace karein
+def get_rsi(pair): return 42.5
+def get_trend(pair): return "DOWN"
+def get_volume(pair): return 865
+def get_support_resistance(pair): return "Support"
+
+# Initialize Quotex
 quotex = Quotex()
 
-# ✅ Main Live Strategy Function
-async def generate_signal(pair: str):
+# Signal Generator with Confidence Score
+async def generate_signal(pair):
     try:
-        print(f"[Live Signal] Analyzing: {pair}")
+        print(f"[Signal] Generating signal for: {pair}")
+        
+        rsi = get_rsi(pair)
+        trend = get_trend(pair)
+        volume = get_volume(pair)
+        zone = get_support_resistance(pair)
 
-        # 🕒 Fetch 15s candles (get 60 candles = 15min data)
-        candles = quotex.get_candles(pair, interval="15S", count=60)
+        score = 0
+        if 30 <= rsi <= 70:
+            score += 25
+        if trend in ["UP", "DOWN"]:
+            score += 25
+        if volume > 400:
+            score += 25
+        if zone in ["Support", "Resistance"]:
+            score += 25
 
-        if not candles or len(candles) < 20:
-            print(f"[Live Signal] Not enough data for {pair}")
-            return None
+        confidence = score
+        if confidence < 60:
+            return None  # signal skip if weak
 
-        # 📊 Prepare dataframe
-        df = pd.DataFrame(candles)
-        df.rename(columns={"open": "Open", "close": "Close", "high": "High", "low": "Low", "volume": "Volume"}, inplace=True)
-
-        # ✅ Add RSI
-        df["rsi"] = ta.momentum.RSIIndicator(close=df["Close"], window=14).rsi()
-        rsi = round(df["rsi"].iloc[-1], 2)
-
-        # ✅ Trend detection (simple SMA comparison)
-        df["sma_short"] = df["Close"].rolling(window=5).mean()
-        df["sma_long"] = df["Close"].rolling(window=20).mean()
-        if df["sma_short"].iloc[-1] > df["sma_long"].iloc[-1]:
-            trend = "UP"
-        elif df["sma_short"].iloc[-1] < df["sma_long"].iloc[-1]:
-            trend = "DOWN"
-        else:
-            trend = "SIDEWAYS"
-
-        # ✅ Volume spike detection
-        recent_volume = df["Volume"].iloc[-1]
-        avg_volume = df["Volume"].rolling(window=20).mean().iloc[-1]
-        volume_strength = "High" if recent_volume > avg_volume else "Normal"
-
-        # ✅ Support/Resistance logic
-        last_close = df["Close"].iloc[-1]
-        recent_lows = df["Low"].rolling(window=20).min().iloc[-1]
-        recent_highs = df["High"].rolling(window=20).max().iloc[-1]
-
-        if last_close <= recent_lows + 0.0003:
-            zone = "Support"
-        elif last_close >= recent_highs - 0.0003:
-            zone = "Resistance"
-        else:
-            zone = "Neutral"
-
-        # ✅ Final signal decision
-        if trend == "UP" and rsi < 70 and zone == "Support":
-            direction = "call"
-        elif trend == "DOWN" and rsi > 30 and zone == "Resistance":
-            direction = "put"
-        else:
-            direction = None
-
-        if not direction:
-            return None
-
-        confidence = "75%" if volume_strength == "High" else "65%"
+        direction = "call" if trend == "UP" else "put"
 
         return {
             "direction": direction,
-            "rsi": rsi,
+            "rsi": round(rsi, 2),
             "trend": trend,
-            "volume": recent_volume,
+            "volume": volume,
             "zone": zone,
             "confidence": confidence
         }
 
     except Exception as e:
-        print(f"[Live Signal] Error for {pair}: {e}")
+        print(f"[Signal] Error generating signal: {e}")
         return None
