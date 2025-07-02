@@ -1,29 +1,32 @@
+# utils/auto_signal_loop.py
+
 import asyncio
+import os
 from signal_generator import generate_signal
-from utils.pairs import pair_buttons
+from utils.pairs import pair_buttons  # Only flag-based pairs
 from telegram import Bot
 from dotenv import load_dotenv
-import os
-import random
 
 load_dotenv()
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 
+# Store user auto mode status
 user_auto_mode = {}
 
 async def auto_signal_loop(user_id):
     while user_auto_mode.get(user_id, False):
-        pair = random.choice(list(pair_buttons.keys()))  # ✅ Only flagged pairs
-        signal = await generate_signal(pair)
+        for pair in pair_buttons.keys():
+            if not user_auto_mode.get(user_id, False):
+                break  # Stop if auto mode is disabled
 
-        if signal:
-            flagged_name = pair_buttons.get(pair, pair)
-            msg = f"""
+            signal = await generate_signal(pair)
+
+            if signal and int(signal['confidence'].replace('%', '')) >= 70:
+                msg = f"""
 🧠 Auto Signal (Live)
 ━━━━━━━━━━━━━━━━━━━━━━━
-📊 Pair: {flagged_name}
+📊 Pair: {pair_buttons[pair]}
 📈 Direction: {signal['direction'].upper()}
 📉 RSI: {signal['rsi']}
 📏 Trend: {signal['trend']}
@@ -34,13 +37,14 @@ async def auto_signal_loop(user_id):
 — Powered by Ankit Singh AI
 ━━━━━━━━━━━━━━━━━━━━━━━
 """
-            try:
-                await bot.send_message(chat_id=user_id, text=msg)
-            except:
-                pass
+                try:
+                    await bot.send_message(chat_id=user_id, text=msg)
+                except Exception as e:
+                    print(f"[AutoSignal] Error sending message: {e}")
+                await asyncio.sleep(2)  # Delay between pair checks
+        await asyncio.sleep(60)  # 1-minute delay before re-scanning all pairs
 
-        await asyncio.sleep(180)  # Every 3 minutes
-
+# Enable/disable handlers
 def enable_auto_for_user(user_id):
     user_auto_mode[user_id] = True
 
