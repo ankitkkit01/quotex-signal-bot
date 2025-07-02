@@ -1,8 +1,6 @@
-# utils/auto_signal_loop.py
-
 import asyncio
 from signal_generator import generate_signal
-from utils.pairs import all_pairs
+from utils.pairs import pair_buttons
 from telegram import Bot
 from dotenv import load_dotenv
 import os
@@ -17,14 +15,15 @@ user_auto_mode = {}
 
 async def auto_signal_loop(user_id):
     while user_auto_mode.get(user_id, False):
-        pair = random.choice(all_pairs)
+        pair = random.choice(list(pair_buttons.keys()))  # ✅ Only flagged pairs
         signal = await generate_signal(pair)
 
         if signal:
+            flagged_name = pair_buttons.get(pair, pair)
             msg = f"""
 🧠 Auto Signal (Live)
 ━━━━━━━━━━━━━━━━━━━━━━━
-📊 Pair: {pair}
+📊 Pair: {flagged_name}
 📈 Direction: {signal['direction'].upper()}
 📉 RSI: {signal['rsi']}
 📏 Trend: {signal['trend']}
@@ -40,7 +39,7 @@ async def auto_signal_loop(user_id):
             except:
                 pass
 
-        await asyncio.sleep(180)  # Every 3 mins
+        await asyncio.sleep(180)  # Every 3 minutes
 
 def enable_auto_for_user(user_id):
     user_auto_mode[user_id] = True
