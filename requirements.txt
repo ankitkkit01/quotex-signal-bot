@@ -4,4 +4,5 @@ ta
 requests
 aiohttp
 python-dotenv
+numpy
 -e ./quotexpy
