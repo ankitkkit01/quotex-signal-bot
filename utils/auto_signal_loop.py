@@ -1,18 +1,52 @@
+# utils/auto_signal_loop.py
+
 import asyncio
-from telegram import Bot
-from utils.pairs import all_pairs
-from utils.auto_controller import is_auto_enabled
 from signal_generator import generate_signal
+from utils.pairs import all_pairs
+from telegram import Bot
+from dotenv import load_dotenv
 import os
+import random
 
-bot = Bot(token=os.getenv("BOT_TOKEN"))
+load_dotenv()
 
-async def auto_signal_loop():
-    while True:
-        try:
-            for user_id in list(is_auto_enabled().keys()):
-                if is_auto_enabled()[user_id]:
-                    for pair in all_pairs:
-                        signal = await generate_signal(pair)
-                        if signal:
-                            msg = f"""
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+bot = Bot(token=BOT_TOKEN)
+
+user_auto_mode = {}
+
+async def auto_signal_loop(user_id):
+    while user_auto_mode.get(user_id, False):
+        pair = random.choice(all_pairs)
+        signal = await generate_signal(pair)
+
+        if signal:
+            msg = f"""
+🧠 Auto Signal (Live)
+━━━━━━━━━━━━━━━━━━━━━━━
+📊 Pair: {pair}
+📈 Direction: {signal['direction'].upper()}
+📉 RSI: {signal['rsi']}
+📏 Trend: {signal['trend']}
+📦 Volume: {signal['volume']}
+🧱 Support/Resistance: {signal['zone']}
+🎯 Confidence: {signal['confidence']}
+
+— Powered by Ankit Singh AI
+━━━━━━━━━━━━━━━━━━━━━━━
+"""
+            try:
+                await bot.send_message(chat_id=user_id, text=msg)
+            except:
+                pass
+
+        await asyncio.sleep(180)  # Every 3 mins
+
+def enable_auto_for_user(user_id):
+    user_auto_mode[user_id] = True
+
+def disable_auto_for_user(user_id):
+    user_auto_mode[user_id] = False
+
+def is_auto_enabled(user_id):
+    return user_auto_mode.get(user_id, False)
