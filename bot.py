@@ -48,21 +48,22 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         flagged_pair = pair_buttons.get(pair, pair)
+        direction_emoji = "📈" if signal_data['direction'] == "call" else "📉"
 
         msg = f"""
 🧠 Signal Generator Result
 ━━━━━━━━━━━━━━━━━━━━━━━
 📊 Pair: {flagged_pair}
-📈 Direction: {signal_data['direction'].upper()}
+{direction_emoji} Direction: {signal_data['direction'].upper()}
 📉 RSI: {signal_data['rsi']}
 📏 Trend: {signal_data['trend']}
 📦 Volume: {signal_data['volume']}
 🧱 Support/Resistance: {signal_data['zone']}
-🎯 Confidence: {signal_data['confidence']}
+🎯 Confidence: 🔥 {signal_data['confidence']}
 
-— Powered by Ankit Singh AI
+Use 15s Candle. Execute immediately.
 ━━━━━━━━━━━━━━━━━━━━━━━
-Do you want to place this trade?
+— Powered by Ankit Singh AI 🚀
 """
 
         confirm_buttons = [
@@ -83,18 +84,20 @@ Do you want to place this trade?
         await query.edit_message_text(f"📤 Placing trade for {pair}...")
 
         try:
-            trade_id = await quotex.place_trade(pair, "call", 10, 60)
+            signal_data = await generate_signal(pair)
+            trade_id = await quotex.place_trade(pair, signal_data['direction'], 10, 60)
+
             if not trade_id:
                 await query.edit_message_text("❌ Trade failed. Please try again.")
                 return
 
-            await asyncio.sleep(60)  # Wait for trade duration
+            await asyncio.sleep(60)
             is_win, result = await quotex.check_result(pair, trade_id)
 
             if is_win:
-                await query.edit_message_text(f"✅ TRADE RESULT:\n{pair} - CALL\n💰 Profit: +${result:.2f} (WIN) 🎉")
+                await query.edit_message_text(f"✅ TRADE RESULT:\n{pair} - {signal_data['direction'].upper()}\n💰 Profit: +${result:.2f} (WIN) 🎉")
             else:
-                await query.edit_message_text(f"❌ TRADE RESULT:\n{pair} - CALL\n📉 Loss: -${-result:.2f} (LOSS)")
+                await query.edit_message_text(f"❌ TRADE RESULT:\n{pair} - {signal_data['direction'].upper()}\n📉 Loss: -${-result:.2f} (LOSS)")
         except Exception as e:
             await query.edit_message_text(f"⚠️ Error placing trade: {str(e)}")
 
