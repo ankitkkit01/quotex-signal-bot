@@ -1,10 +1,11 @@
+# signal_generator.py
 
 from quotexpy.new import Quotex
 import pandas as pd
 import ta
 import random
 
-# Login during initialization
+# Quotex Login (Real Data Fetch)
 quotex = Quotex()
 quotex.login(email="arhimanshya@gmail.com", password="12345678an")
 
@@ -27,7 +28,6 @@ def analyze_market(pair):
         df["volume"] = ta.volume.OnBalanceVolumeIndicator(close=df["close"], volume=df["volume"]).on_balance_volume()
 
         latest = df.iloc[-1]
-
         direction = None
         confidence = 0
 
@@ -53,7 +53,7 @@ def analyze_market(pair):
         print(f"[Signal Error] {e}")
         return None
 
-# Main callable function
+# Async Signal Function
 async def generate_signal(pair):
     print(f"[Generating Signal] {pair}")
     signal = analyze_market(pair)
