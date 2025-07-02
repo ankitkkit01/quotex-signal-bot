@@ -5,37 +5,30 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 )
 from dotenv import load_dotenv
-
 from signal_generator import generate_signal
 from utils.pairs import pair_buttons
-from utils.auto_controller import enable_auto_mode, disable_auto_mode, is_auto_enabled
 from quotexpy.new import Quotex
+from utils.auto_signal_loop import (
+    auto_signal_loop, enable_auto_for_user,
+    disable_auto_for_user, is_auto_enabled
+)
 
 load_dotenv()
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 quotex = Quotex()
 user_selected_pairs = {}
 
 # /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("🧠 Signal Generator", callback_data="signal_generator")]]
+    keyboard = [
+        [InlineKeyboardButton("🧠 Signal Generator", callback_data="signal_generator")],
+        [InlineKeyboardButton("🤖 Auto Mode", callback_data="auto_mode_menu")]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Welcome to Quotex Signal Bot 🚀", reply_markup=reply_markup)
 
-# /auto_on command
-async def auto_on(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    enable_auto_mode(user_id)
-    await update.message.reply_text("✅ Auto Mode enabled. You will now receive signals automatically.")
-
-# /auto_off command
-async def auto_off(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    disable_auto_mode(user_id)
-    await update.message.reply_text("❌ Auto Mode disabled. You will no longer receive auto signals.")
-
-# Handle button interactions
+# Handle button selections
 async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -55,13 +48,14 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("pair_"):
         pair = query.data.replace("pair_", "")
         user_selected_pairs[query.from_user.id] = pair
-
         signal_data = await generate_signal(pair)
+
         if not signal_data:
             await query.edit_message_text(f"⚠️ No valid signal found for {pair}. Try again later.")
             return
 
         flagged_pair = pair_buttons.get(pair, pair)
+
         msg = f"""
 🧠 Signal Generator Result
 ━━━━━━━━━━━━━━━━━━━━━━━
@@ -77,6 +71,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ━━━━━━━━━━━━━━━━━━━━━━━
 Do you want to place this trade?
 """
+
         confirm_buttons = [
             [
                 InlineKeyboardButton("✅ YES", callback_data="confirm_trade"),
@@ -113,11 +108,34 @@ Do you want to place this trade?
     elif query.data == "cancel_trade":
         await query.edit_message_text("❌ Trade cancelled by user.")
 
+    elif query.data == "auto_mode_menu":
+        auto_on = is_auto_enabled(query.from_user.id)
+        text = "✅ Auto mode is currently ON." if auto_on else "❌ Auto mode is OFF."
+        buttons = [
+            [
+                InlineKeyboardButton("▶️ Start Auto", callback_data="auto_on"),
+                InlineKeyboardButton("⛔ Stop Auto", callback_data="auto_off")
+            ]
+        ]
+        await query.edit_message_text(f"{text}\nChoose an option below:", reply_markup=InlineKeyboardMarkup(buttons))
+
+    elif query.data == "auto_on":
+        user_id = query.from_user.id
+        if not is_auto_enabled(user_id):
+            enable_auto_for_user(user_id)
+            asyncio.create_task(auto_signal_loop(user_id))
+            await query.edit_message_text("✅ Auto Signal Mode Activated!")
+        else:
+            await query.edit_message_text("⚠️ Auto mode already running.")
+
+    elif query.data == "auto_off":
+        user_id = query.from_user.id
+        disable_auto_for_user(user_id)
+        await query.edit_message_text("🛑 Auto Signal Mode Stopped.")
+
 # Run bot
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("auto_on", auto_on))
-    app.add_handler(CommandHandler("auto_off", auto_off))
     app.add_handler(CallbackQueryHandler(handle_button))
     app.run_polling()
